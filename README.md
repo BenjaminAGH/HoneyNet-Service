@@ -1,2 +1,11 @@
-# HoneyNet-Service
-Implementación de servicio de HoneyNet con administración remota, para pequeñas y medianas empresas.
+# HoneyNet - Arquitectura del Proyecto
+
+Sistema de red señuelo (HoneyNet) con monitorización en tiempo real mediante un dashboard.
+
+# 🛠️ Arquitectura HoneyNet  
+
+| **Layer**         | **Tecnologías**                                                                |
+|-------------------|--------------------------------------------------------------------------------|
+| **🐋 CONTENEDORES** | `Docker` • `Docker Compose` • `Kubernetes` (evaluando)                         |                                |
+| **🔌 BACKEND**        | `NestJS`                             |
+| **📊 FRONTEND**  | `Angular`          |
