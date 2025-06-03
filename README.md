@@ -7,5 +7,5 @@ Sistema de red señuelo (HoneyNet) con monitorización en tiempo real mediante u
 | **Layer**         | **Tecnologías**                                                                |
 |-------------------|--------------------------------------------------------------------------------|
 | **🐋 CONTENEDORES** | `Docker` • `Docker Compose` • `Kubernetes` (evaluando)                         |                                |
-| **🔌 BACKEND**        | `NestJS`                             |
+| **🔌 BACKEND**        | `FastAPI`                             |
 | **📊 FRONTEND**  | `Angular`          |
