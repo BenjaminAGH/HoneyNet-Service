@@ -1,0 +1,24 @@
+networks:
+  honeynet-net:
+    external: true
+
+services:
+  backend:
+    build: ./backend
+    container_name: honeynet-manager
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - honeynet-net
+    ports:
+      - "8000:8000"
+
+  nginx:
+    build: ./nginx
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - honeynet-net
+
