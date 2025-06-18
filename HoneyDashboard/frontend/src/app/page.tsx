@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
+import { Trash2 } from "lucide-react";
 
 export default function HomePage() {
   const [honeypots, setHoneypots] = useState<any[]>([])
@@ -78,13 +79,20 @@ export default function HomePage() {
           <div className="space-y-2">
             {honeypots.map((c) => (
               <Card key={c.name} className="p-4 flex justify-between items-center">
-                <div>
-                  <p className="font-medium">{c.name}</p>
-                  <p className="text-sm text-muted-foreground">Estado: {c.status}</p>
+                <div className="flex items-center justify-between w-full">
+                  <div>
+                    <p className="font-medium">{c.name}</p>
+                    <p className="text-sm text-muted-foreground">Estado: {c.status}</p>
+                  </div>
+                  <Button
+                    variant="destructive"
+                    size="icon"
+                    onClick={() => handleDelete(c.name)}
+                    className="ml-4"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
-                <Button variant="destructive" onClick={() => handleDelete(c.name)}>
-                  Eliminar
-                </Button>
               </Card>
             ))}
           </div>
