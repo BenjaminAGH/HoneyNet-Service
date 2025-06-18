@@ -10,6 +10,7 @@ import { Separator } from '@/components/ui/separator'
 import { Trash2 } from "lucide-react";
 
 export default function HomePage() {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [honeypots, setHoneypots] = useState<any[]>([])
   const [form, setForm] = useState({ ip: '', protocol: '', port: '', image: '' })
 
