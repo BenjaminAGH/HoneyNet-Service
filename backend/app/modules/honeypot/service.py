@@ -1,0 +1,163 @@
+from app.core.docker_client import client
+from sqlalchemy.orm import Session
+from datetime import datetime
+from fastapi import HTTPException
+import docker
+import subprocess
+import re
+
+from . import repository
+from .dto import NetworkDTO, TopologyContainerDTO, TopologyDTO
+
+
+class HoneypotService:
+    def __init__(self, db: Session):
+        self.db = db
+
+    def extract_metadata(self, container) -> dict:
+        """
+        Extrae metadatos básicos de un contenedor Docker,
+        incluyendo siempre un source_type (cadena) y path (None ó cadena).
+        """
+        raw_cmd = container.attrs["Config"].get("Cmd")
+        if isinstance(raw_cmd, list):
+            command = raw_cmd
+        elif isinstance(raw_cmd, str):
+            if raw_cmd.startswith("{") and raw_cmd.endswith("}"):
+                tokens = re.findall(r'"[^"]+"|[^,{} ]+', raw_cmd)
+                command = [t.strip('"') for t in tokens]
+            else:
+                command = raw_cmd.split()
+        elif isinstance(raw_cmd, (bytes, bytearray)):
+            command = raw_cmd.decode(errors="ignore").split()
+        else:
+            command = []
+
+        created = datetime.fromisoformat(
+            container.attrs["Created"].replace("Z", "+00:00")
+        )
+
+        return {
+            "container_id": container.id,
+            "name": container.name,
+            "image": container.image.tags[0] if container.image.tags else "",
+            "command": command,
+            "created_at": created,
+            "status": container.status,
+            "ports": str(container.attrs["NetworkSettings"]["Ports"]),
+            "source_type": "image",
+            "path": None,
+        }
+
+    def create(self, data):
+        if data.source_type == "image":
+            if not data.image:
+                raise HTTPException(status_code=422, detail="Se requiere 'image' para source_type='image'")
+            try:
+                container = client.containers.run(data.image, name=data.name, detach=True)
+            except docker.errors.ImageNotFound:
+                client.images.pull(data.image)
+                container = client.containers.run(data.image, name=data.name, detach=True)
+            except docker.errors.APIError as e:
+                raise HTTPException(status_code=500, detail=f"Error al lanzar imagen '{data.image}': {e.explanation}")
+
+        elif data.source_type == "dockerfile":
+            if not data.path:
+                raise HTTPException(status_code=422, detail="Se requiere 'path' para source_type='dockerfile'")
+            container = client.containers.build(path=data.path, tag=data.name)
+
+        elif data.source_type == "compose":
+            if not data.path:
+                raise HTTPException(status_code=422, detail="Se requiere 'path' para source_type='compose'")
+            try:
+                subprocess.run(["docker-compose", "-f", data.path, "up", "-d"], check=True)
+            except subprocess.CalledProcessError as e:
+                raise HTTPException(status_code=500, detail=f"Error al levantar con docker-compose: {e}")
+            return repository.save_container(self.db, {
+                "name": data.name,
+                "source_type": data.source_type,
+                "path": data.path,
+                "status": "running"
+            })
+
+        else:
+            raise HTTPException(status_code=400, detail=f"source_type inválido: {data.source_type}")
+
+        metadata = self.extract_metadata(container)
+        metadata["source_type"] = data.source_type
+        metadata["path"] = data.path
+        return repository.save_container(self.db, metadata)
+
+    def list_active(self) -> list[dict]:
+        containers = client.containers.list()
+        return [self.extract_metadata(c) for c in containers]
+
+    def list_all(self) -> list[dict]:
+        models = repository.get_all_containers(self.db)
+        results = []
+        for m in models:
+            raw_cmd = m.command or ""
+            if raw_cmd.startswith("{") and raw_cmd.endswith("}"):
+                tokens = re.findall(r'"[^"]+"|[^,{} ]+', raw_cmd)
+                command = [t.strip('"') for t in tokens]
+            else:
+                command = raw_cmd.split() if raw_cmd else []
+            results.append({
+                "container_id": str(m.container_id),
+                "name": m.name,
+                "image": m.image,
+                "command": command,
+                "created_at": m.created_at,
+                "status": m.status,
+                "ports": m.ports,
+                "source_type": m.source_type,
+                "path": m.path,
+            })
+        return results
+
+    def delete(self, name: str) -> dict:
+        try:
+            container = client.containers.get(name)
+            container.stop()
+            container.remove()
+            return {"message": f"{name} eliminado"}
+        except docker.errors.NotFound:
+            raise HTTPException(status_code=404, detail=f"Contenedor '{name}' no encontrado")
+
+    def get_topology(self) -> TopologyDTO:
+        active = self.list_active()
+
+        full_by_short = { c["container_id"][:12]: c["container_id"] for c in active }
+
+        summary_nets = client.networks.list()
+        networks: list[dict] = []
+        net_to_conts: dict[str, list[str]] = {}
+
+        for summary in summary_nets:
+            net = client.networks.get(summary.id)
+            ipam_cfg = net.attrs.get("IPAM", {}).get("Config", [])
+            subnet = ipam_cfg[0].get("Subnet") if ipam_cfg else None
+
+            short_ids = list(net.attrs.get("Containers", {}).keys())
+            attached = [full_by_short.get(s, s) for s in short_ids]
+
+            networks.append({
+                "id": net.id,
+                "name": net.name,
+                "subnet": subnet,
+                "containers": attached,
+            })
+            net_to_conts[net.id] = attached
+
+        for c in active:
+            c["source_type"] = c.get("source_type") or "image"
+            c["path"] = c.get("path")
+            c["networks"] = [
+                net_id for net_id, conts in net_to_conts.items()
+                if c["container_id"] in conts
+            ]
+
+        return TopologyDTO(
+            networks=[NetworkDTO(**n) for n in networks],
+            containers=[TopologyContainerDTO(**c) for c in active]
+        )
