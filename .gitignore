@@ -21,8 +21,8 @@ out/
 coverage/
 
 # Env vars
-.env*
-!.env.example
+#.env*
+#!.env.example
 
 # IDEs y editores
 .vscode/

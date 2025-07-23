@@ -6,7 +6,6 @@ services:
     cap_add:
       - NET_RAW
       - NET_ADMIN
-
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     env_file:
@@ -17,12 +16,27 @@ services:
   frontend:
     build: ./frontend
     container_name: honeynet-frontend
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000"
     env_file:
       - ./frontend/.env
     depends_on:
       - backend
+    networks:
+      - honeynet-net
+
+  nginx:
+    image: nginx:alpine
+    container_name: honeynet-proxy
+    restart: always
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "80:80"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - frontend
     networks:
       - honeynet-net
 
@@ -46,3 +60,4 @@ volumes:
 networks:
   honeynet-net:
     driver: bridge
+
