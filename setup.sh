@@ -53,9 +53,7 @@ fi
 
 echo "Construyendo contenedores Docker..."
 sudo docker-compose down -v
-sudo docker-compose up --build -d
-
-echo ".: Proyecto desplegado exitosamente."
+sudo docker-compose up --build
 
 
 # DEBO HACER ESTO 

@@ -5,6 +5,7 @@ from app.modules.devices.controller import router as device_router
 from app.core.init_db import init_db
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.cors import add_cors
+from app.core.config import settings
 
 
 app = FastAPI()
@@ -16,7 +17,7 @@ app.include_router(device_router)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["settings.frontend_url"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
