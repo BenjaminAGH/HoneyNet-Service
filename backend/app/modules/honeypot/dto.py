@@ -29,6 +29,7 @@ class NetworkDTO(BaseModel):
     containers: List[str]
 
 class TopologyContainerDTO(HoneypotHistoryDTO):
+    host_ip: Optional[str] = None
     networks: List[str] = Field(
         default_factory=list,
         description="Lista de IDs de red"

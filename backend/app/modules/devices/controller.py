@@ -4,11 +4,12 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from .dto import CreateDeviceDTO, DeviceHistoryDTO
 from .service import DeviceService
+from app.core.config import settings
 
 router = APIRouter(prefix="/devices", tags=["Devices"])
 
 @router.post("/discover", response_model=List[DeviceHistoryDTO])
-def discover_devices(subnet: str = "192.168.1.0/24", db: Session = Depends(get_db)):
+def discover_devices(subnet: str = settings.red_ip, db: Session = Depends(get_db)):
     """
     Escanea la subred indicada vía ARP y guarda/lista todos los dispositivos encontrados.
     """

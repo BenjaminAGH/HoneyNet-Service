@@ -4,6 +4,8 @@ from scapy.all import ARP, Ether, srp
 from .model import NetworkDevice
 from .repository import clear_devices, save_device, list_devices
 from .dto import CreateDeviceDTO, DeviceHistoryDTO
+from app.core.config import settings
+
 
 import nmap
 
@@ -25,7 +27,7 @@ class DeviceService:
         except Exception:
             return 'unknown', ''
 
-    def discover(self, subnet: str = "192.168.0.0/24") -> list[DeviceHistoryDTO]:
+    def discover(self, subnet: str = settings.red_ip) -> list[DeviceHistoryDTO]:
         # 1) Limpia la tabla
         clear_devices(self.db)
 

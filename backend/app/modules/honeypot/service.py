@@ -5,6 +5,11 @@ from fastapi import HTTPException
 import docker
 import subprocess
 import re
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+REAL_HOST_IP = os.getenv("DOCKER_HOST_IP")
 
 from . import repository
 from .dto import NetworkDTO, TopologyContainerDTO, TopologyDTO
@@ -15,10 +20,6 @@ class HoneypotService:
         self.db = db
 
     def extract_metadata(self, container) -> dict:
-        """
-        Extrae metadatos básicos de un contenedor Docker,
-        incluyendo siempre un source_type (cadena) y path (None ó cadena).
-        """
         raw_cmd = container.attrs["Config"].get("Cmd")
         if isinstance(raw_cmd, list):
             command = raw_cmd
@@ -129,11 +130,11 @@ class HoneypotService:
 
         full_by_short = { c["container_id"][:12]: c["container_id"] for c in active }
 
-        summary_nets = client.networks.list()
-        networks: list[dict] = []
+        docker_nets = client.networks.list()
+        network_dicts: list[dict] = []
         net_to_conts: dict[str, list[str]] = {}
 
-        for summary in summary_nets:
+        for summary in docker_nets:
             net = client.networks.get(summary.id)
             ipam_cfg = net.attrs.get("IPAM", {}).get("Config", [])
             subnet = ipam_cfg[0].get("Subnet") if ipam_cfg else None
@@ -141,7 +142,7 @@ class HoneypotService:
             short_ids = list(net.attrs.get("Containers", {}).keys())
             attached = [full_by_short.get(s, s) for s in short_ids]
 
-            networks.append({
+            network_dicts.append({
                 "id": net.id,
                 "name": net.name,
                 "subnet": subnet,
@@ -157,7 +158,23 @@ class HoneypotService:
                 if c["container_id"] in conts
             ]
 
+            try:
+                container = client.containers.get(c["name"])
+                networks = container.attrs["NetworkSettings"]["Networks"]
+                gateway = None
+                for net_name, net_conf in networks.items():
+                    if net_name != "none" and "Gateway" in net_conf:
+                        gateway = net_conf["Gateway"]
+                        break
+
+                if gateway in ["172.20.0.1", "172.18.0.1", "172.17.0.1"]:
+                    c["host_ip"] = REAL_HOST_IP
+                else:
+                    c["host_ip"] = gateway or ""
+            except Exception:
+                c["host_ip"] = ""
+
         return TopologyDTO(
-            networks=[NetworkDTO(**n) for n in networks],
+            networks=[NetworkDTO(**n) for n in network_dicts],
             containers=[TopologyContainerDTO(**c) for c in active]
         )
