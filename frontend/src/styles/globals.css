@@ -11,16 +11,33 @@ html, body, #__next {
   margin: 0;
   padding: 0;
   height: 100%;
-  overflow: hidden;
+  overflow-y: auto;
 }
 
 .react-flow__controls {
   background-color: var(--input) !important;
-  color: var(--card) !important;
   box-shadow: 0 1px 4px rgba(0,0,0,0.2) !important;
   border-radius: 10px !important;
   overflow: hidden;
 }
+
+.react-flow__controls-button {
+  color: var(--foreground);
+  background-color: var(--card);
+  transition: background 0.2s ease-in-out;
+  border: none;
+}
+
+.dark .react-flow__controls-button {
+  color: var(--foreground);
+  background-color: var(--muted);
+}
+
+.react-flow__controls-button:hover {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+}
+
 
 @theme inline {
   --color-background: var(--background);
