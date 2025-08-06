@@ -42,9 +42,31 @@ export async function deleteHoneypot(containerId: string) {
   return res.json()
 }
 
-// <-- Aquí nos interesa
 export async function getTopology(): Promise<TopologyDTO> {
   const res = await fetch(`${API_URL}/honeypots/topology`)
   if (!res.ok) throw new Error(`Error ${res.status}`)
+  return res.json()
+}
+
+export async function getAvailableDockerfiles(): Promise<string[]> {
+  const res = await fetch(`${API_URL}/honeypots/available-dockerfiles`)
+  if (!res.ok) throw new Error(`Error al obtener plantillas: ${res.status}`)
+  return res.json()
+}
+
+export async function uploadDockerfile(file: File): Promise<{ path: string }> {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  const res = await fetch(`${API_URL}/honeypots/upload-dockerfile`, {
+    method: 'POST',
+    body: formData,
+  })
+
+  if (!res.ok) {
+    const err = await res.json()
+    throw new Error(err.detail || `Error al subir Dockerfile: ${res.status}`)
+  }
+
   return res.json()
 }

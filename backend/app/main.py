@@ -13,6 +13,8 @@ init_db()
 app.include_router(honeypot_router)
 app.include_router(device_router)
 
+print("CORS frontend_url:", settings.frontend_url)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[settings.frontend_url],

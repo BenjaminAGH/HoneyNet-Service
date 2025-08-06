@@ -65,7 +65,21 @@ class HoneypotService:
         elif data.source_type == "dockerfile":
             if not data.path:
                 raise HTTPException(status_code=422, detail="Se requiere 'path' para source_type='dockerfile'")
-            container = client.containers.build(path=data.path, tag=data.name)
+            
+            if os.path.isdir(data.path):  # si es carpeta (modo 2)
+                dockerfile_path = os.path.join(data.path, "Dockerfile")
+                if not os.path.exists(dockerfile_path):
+                    raise HTTPException(status_code=400, detail=f"No se encontró Dockerfile en {data.path}")
+                image, _ = client.images.build(path=data.path, tag=data.name)
+                container = client.containers.run(image.tags[0], name=data.name, detach=True)
+            
+            elif os.path.isfile(data.path):  # si es archivo suelto (modo 3)
+                image, _ = client.images.build(fileobj=open(data.path, "rb"), tag=data.name, rm=True, custom_context=True)
+                container = client.containers.run(image.tags[0], name=data.name, detach=True)
+            
+            else:
+                raise HTTPException(status_code=400, detail=f"Ruta inválida para Dockerfile: {data.path}")
+
 
         elif data.source_type == "compose":
             if not data.path:

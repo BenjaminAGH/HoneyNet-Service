@@ -8,3 +8,4 @@ python-dotenv
 docker
 scapy
 python-nmap
+python-multipart
